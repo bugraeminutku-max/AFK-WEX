@@ -18,12 +18,10 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
-
-    - name: Clean & Generate Working Android Structure
+    - name: Clean Old Files & Build APK
       run: |
-        rm -f build.gradle.kts settings.gradle.kts
+        rm -rf build.gradle.kts settings.gradle.kts app gradlew gradlew.bat gradle
+
         mkdir -p app/src/main/java/com/afkwex/app/ui/screens
         mkdir -p app/src/main/java/com/afkwex/app/ui/theme
 
@@ -42,20 +40,14 @@ jobs:
                 mavenCentral()
             }
         }
-        rootProject.name = "AFK WEX"
+        rootProject.name = "AFKWEX"
         include(":app")
         EOF
 
         cat << 'EOF' > build.gradle.kts
-        buildscript {
-            repositories {
-                google()
-                mavenCentral()
-            }
-            dependencies {
-                classpath("com.android.tools.build:gradle:8.2.2")
-                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22")
-            }
+        plugins {
+            id("com.android.application") version "8.1.4" apply false
+            id("org.jetbrains.kotlin.android") version "1.8.10" apply false
         }
         EOF
 
@@ -88,15 +80,15 @@ jobs:
                 compose = true
             }
             composeOptions {
-                kotlinCompilerExtensionVersion = "1.5.8"
+                kotlinCompilerExtensionVersion = "1.4.3"
             }
         }
 
         dependencies {
-            implementation("androidx.core:core-ktx:1.12.0")
-            implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-            implementation("androidx.activity:activity-compose:1.8.2")
-            implementation(platform("androidx.compose:compose-bom:2024.02.00"))
+            implementation("androidx.core:core-ktx:1.10.1")
+            implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.1")
+            implementation("androidx.activity:activity-compose:1.7.2")
+            implementation(platform("androidx.compose:compose-bom:2023.06.01"))
             implementation("androidx.compose.ui:ui")
             implementation("androidx.compose.ui:ui-graphics")
             implementation("androidx.compose.material3:material3")
@@ -174,7 +166,6 @@ jobs:
         cat << 'EOF' > app/src/main/java/com/afkwex/app/ui/screens/MainAppScreen.kt
         package com.afkwex.app.ui.screens
 
-        import androidx.compose.foundation.background
         import androidx.compose.foundation.layout.*
         import androidx.compose.material3.*
         import androidx.compose.runtime.*
@@ -196,8 +187,8 @@ jobs:
         }
         EOF
 
-    - name: Build APK with Gradle
-      run: gradle assembleDebug
+        gradle wrapper --gradle-version 8.2
+        ./gradlew assembleDebug --no-daemon
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
