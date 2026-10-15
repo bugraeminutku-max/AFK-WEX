@@ -1,0 +1,156 @@
+name: Build AFK WEX APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Auto Generate App Folder & Source Files
+      run: |
+        mkdir -p app/src/main/java/com/afkwex/app/ui/screens
+        mkdir -p app/src/main/java/com/afkwex/app/ui/theme
+
+        cat << 'EOF' > app/build.gradle.kts
+        plugins {
+            id("com.android.application")
+            id("org.jetbrains.kotlin.android")
+            id("com.google.devtools.ksp")
+        }
+        android {
+            namespace = "com.afkwex.app"
+            compileSdk = 34
+            defaultConfig {
+                applicationId = "com.afkwex.app"
+                minSdk = 26
+                targetSdk = 34
+                versionCode = 1
+                versionName = "1.0.0"
+            }
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
+            kotlinOptions { jvmTarget = "17" }
+            buildFeatures { compose = true }
+            composeOptions { kotlinCompilerExtensionVersion = "1.5.8" }
+        }
+        dependencies {
+            implementation("androidx.core:core-ktx:1.12.0")
+            implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+            implementation("androidx.activity:activity-compose:1.8.2")
+            implementation(platform("androidx.compose:compose-bom:2024.02.00"))
+            implementation("androidx.compose.ui:ui")
+            implementation("androidx.compose.ui:ui-graphics")
+            implementation("androidx.compose.material3:material3")
+            implementation("androidx.room:room-runtime:2.6.1")
+            implementation("androidx.room:room-ktx:2.6.1")
+            ksp("androidx.room:room-compiler:2.6.1")
+            implementation("com.squareup.okhttp3:okhttp:4.12.0")
+            implementation("com.google.code.gson:gson:2.10.1")
+        }
+        EOF
+
+        cat << 'EOF' > app/src/main/AndroidManifest.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+            <uses-permission android.permission.INTERNET />
+            <uses-permission android.permission.FOREGROUND_SERVICE />
+            <uses-permission android.permission.WAKE_LOCK />
+            <application
+                android:allowBackup="true"
+                android:label="AFK WEX"
+                android:supportsRtl="true"
+                android:theme="@style/Theme.AFKWEX"
+                tools:targetApi="31">
+                <activity android:name=".MainActivity" android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+            </application>
+        </manifest>
+        EOF
+
+        cat << 'EOF' > app/src/main/java/com/afkwex/app/MainActivity.kt
+        package com.afkwex.app
+        import android.os.Bundle
+        import androidx.activity.ComponentActivity
+        import androidx.activity.compose.setContent
+        import com.afkwex.app.ui.screens.MainAppNavigation
+        import com.afkwex.app.ui.theme.AFKWEXTheme
+        class MainActivity : ComponentActivity() {
+            override fun onCreate(savedInstanceState: Bundle?) {
+                super.onCreate()
+                setContent { AFKWEXTheme { MainAppNavigation() } }
+            }
+        }
+        EOF
+
+        cat << 'EOF' > app/src/main/java/com/afkwex/app/ui/theme/Theme.kt
+        package com.afkwex.app.ui.theme
+        import androidx.compose.material3.MaterialTheme
+        import androidx.compose.material3.darkColorScheme
+        import androidx.compose.runtime.Composable
+        import androidx.compose.ui.graphics.Color
+        val DarkAnthracite = Color(0xFF12141C)
+        val SurfaceCard = Color(0xFF1B1E2B)
+        val NeonTurquoise = Color(0xFF00F0FF)
+        val TextPrimary = Color(0xFFF0F4F8)
+        private val DarkColorScheme = darkColorScheme(
+            primary = NeonTurquoise,
+            background = DarkAnthracite,
+            surface = SurfaceCard,
+            onBackground = TextPrimary
+        )
+        @Composable
+        fun AFKWEXTheme(content: @Composable () -> Unit) {
+            MaterialTheme(colorScheme = DarkColorScheme, content = content)
+        }
+        EOF
+
+        cat << 'EOF' > app/src/main/java/com/afkwex/app/ui/screens/MainAppScreen.kt
+        package com.afkwex.app.ui.screens
+        import androidx.compose.foundation.background
+        import androidx.compose.foundation.layout.*
+        import androidx.compose.material3.*
+        import androidx.compose.runtime.*
+        import androidx.compose.ui.Modifier
+        import androidx.compose.ui.text.font.FontWeight
+        import androidx.compose.ui.unit.dp
+        import androidx.compose.ui.unit.sp
+        import com.afkwex.app.ui.theme.*
+
+        @Composable
+        fun MainAppNavigation() {
+            Surface(modifier = Modifier.fillMaxSize(), color = DarkAnthracite) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("AFK WEX", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = NeonTurquoise)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Android Minecraft Bot Yöneticisi Hazır!", color = TextPrimary)
+                }
+            }
+        }
+        EOF
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Build APK with Gradle
+      run: gradle assembleDebug
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: AFK_WEX_v1.0_Debug
+        path: app/build/outputs/apk/debug/app-debug.apk
